@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIFA World Cup 2026 Venue Assistant</title>
+    <link rel="stylesheet" href="/style.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    
+    <header class="app-header">
+        <div class="logo-container">
+            <span class="logo-badge" aria-hidden="true">⚽</span>
+            <h1>FIFA 2026 Venue Assistant</h1>
+        </div>
+        <div class="a11y-controls" role="group" aria-label="Accessibility options">
+            <button id="btn-contrast" class="control-btn" aria-pressed="false" title="Toggle High Contrast Mode">
+                <span>Contrast</span>
+            </button>
+            <button id="btn-text-size" class="control-btn" aria-pressed="false" title="Toggle Larger Sizing">
+                <span>Size +</span>
+            </button>
+            <button id="btn-speech-feedback" class="control-btn toggle-active" aria-pressed="true" title="Toggle Voice Feedback">
+                <span>Voice Out</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <section class="info-sidebar" aria-label="Stadium Information">
+            <div class="info-card">
+                <h2>Accessibility & Info</h2>
+                <p>Welcome to the <strong>FIFA 2026 Venue Assistant</strong>. I am fully optimized to help you with:</p>
+                <ul>
+                    <li>♿ <strong>Step-free navigation</strong> (wheelchair routes, elevator hubs)</li>
+                    <li>🗣️ <strong>Multilingual queries</strong> (English, Spanish, French, etc.)</li>
+                    <li>📍 <strong>Facility locator</strong> (accessible toilets, first aid, water)</li>
+                    <li>ℹ️ <strong>Venue policies</strong> (permitted bags, ticketing help)</li>
+                </ul>
+                <div class="keyboard-tips">
+                    <h3>⌨️ Keyboard Shortcuts</h3>
+                    <p><kbd>Ctrl</kbd> + <kbd>Space</kbd> : Trigger Voice Input</p>
+                    <p><kbd>Esc</kbd> : Focus chat input box</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="chat-section" aria-label="Conversation window">
+            <div id="announcement-log" class="sr-only" aria-live="assertive"></div>
+            
+            <div id="chat-box" class="chat-box" role="log" aria-live="polite" aria-label="Message history">
+                <div class="message system-msg">
+                    <p><strong>System:</strong> Welcome! Ask me for gate wait times, step-free navigation, or nearest restrooms. You can type or tap the microphone to talk to me.</p>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <form id="chat-form" action="#" onsubmit="return false;">
+                    <label for="chat-input" class="sr-only">Type your message or query</label>
+                    <input 
+                        type="text" 
+                        id="chat-input" 
+                        placeholder="Ask me: 'Where is the nearest toilet to Section 112?'" 
+                        autocomplete="off" 
+                        required
+                        aria-describedby="input-help"
+                    >
+                    <button type="submit" id="btn-send" class="action-btn send-btn" aria-label="Send text message">
+                        <span>Send</span>
+                    </button>
+                    <button type="button" id="btn-mic" class="action-btn mic-btn" aria-label="Start voice typing" aria-pressed="false">
+                        <span class="mic-icon" aria-hidden="true">🎤</span>
+                    </button>
+                </form>
+                <div id="input-help" class="input-help-text">Press Enter to send. Use the microphone for speech-to-text.</div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p>&copy; FIFA World Cup 2026 Stadium Navigation Service. Safety first: In emergency, text HELP to 69050.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+</body>
+</html>
