@@ -19,6 +19,9 @@ def sanitize_and_validate_input(text: str) -> str:
     if len(sanitized) > MAX_INPUT_LENGTH:
         raise ValidationError(f"Input is too long. Maximum allowed length is {MAX_INPUT_LENGTH} characters.")
     
+    # Strip script blocks and their content
+    sanitized = re.sub(r'<script.*?>.*?</script>', '', sanitized, flags=re.IGNORECASE | re.DOTALL)
+    
     # Strip HTML tags
     sanitized = re.sub(r'<[^>]*>', '', sanitized)
     

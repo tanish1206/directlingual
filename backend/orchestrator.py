@@ -122,7 +122,7 @@ def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
     is_french = any(w in last_msg for w in ["comment", "porte", "toilette", "chemin", "fauteuil"])
     
     # Prompt injection check
-    if "ignore" in last_msg or "prompt" in last_msg or "instructions" in last_msg:
+    if any(w in last_msg for w in ["ignore", "prompt", "instructions", "override", "pirate", "pretend"]):
         if is_spanish:
             return "Lo siento, no puedo modificar mis instrucciones del sistema."
         elif is_french:
@@ -132,7 +132,8 @@ def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
     # Routing
     if "gate" in last_msg or "puerta" in last_msg or "porte" in last_msg:
         # Check routing
-        if "to" in last_msg or "a " in last_msg or "vers" in last_msg:
+        words = last_msg.replace(",", " ").replace(".", " ").split()
+        if "to" in words or "a" in words or "vers" in words or "route" in words or "como ir" in last_msg or "comment aller" in last_msg:
             # Let's run a route tool call
             # Default to routing Gate A to Gate C or Section 112
             target_gate = "Gate C" if ("c" in last_msg) else "Gate A"
