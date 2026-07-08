@@ -1,5 +1,4 @@
 import os
-import json
 import logging
 from typing import List, Dict, Any
 from dotenv import load_dotenv
@@ -33,6 +32,7 @@ STATIC_EMERGENCY_RESPONSE = (
     "the nearest First Aid Station (North at Section 102, South at Section 124)."
 )
 
+# pylint: disable=line-too-long
 SYSTEM_PROMPT = (
     "You are the Multilingual, Accessibility-Aware Stadium Navigation & Info Assistant for the FIFA World Cup 2026.\n\n"
     "CRITICAL RULES FOR SECURITY & SAFETY:\n"
@@ -42,6 +42,7 @@ SYSTEM_PROMPT = (
     "4. Accessibility Tone: Use short, plain sentences. If requested, simplify your language further. When describing routes, mention step-free access clearly for accessibility users.\n"
     "5. Safety Boundary: For any emergency (injuries, active threats), direct the user to physical stewards or emergency services immediately."
 )
+# pylint: enable=line-too-long
 
 
 def check_emergency(user_message: str) -> bool:
@@ -78,27 +79,27 @@ def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     try:
         if name == "get_route":
             return get_route(args.get("start", ""), args.get("end", ""))
-        elif name == "get_gate_status":
+        if name == "get_gate_status":
             return get_gate_status(args.get("gate_name", ""))
-        elif name == "get_facility":
+        if name == "get_facility":
             # Extract section as integer or None
             near_sec: Any = args.get("near_section")
             val: int | None = None
             if near_sec is not None:
                 val = int(near_sec)
             return get_facility(args.get("facility_type", ""), val)
-        elif name == "faq_lookup":
+        if name == "faq_lookup":
             return faq_lookup(args.get("query", ""))
-        else:
-            return {"error": f"Tool '{name}' not found."}
-    except Exception as e:
+        return {"error": f"Tool '{name}' not found."}
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Error executing tool %s: %s", name, str(e))
         return {"error": f"Internal error executing tool: {str(e)}"}
 
 
 def _mock_prompt_injection_check(last_msg: str, is_spanish: bool, is_french: bool) -> str | None:
     """Checks for prompt injection keywords and returns a refusal if found."""
-    if any(w in last_msg for w in ["ignore", "prompt", "instructions", "override", "pirate", "pretend"]):
+    injection_words = ["ignore", "prompt", "instructions", "override", "pirate", "pretend"]
+    if any(w in last_msg for w in injection_words):
         if is_spanish:
             return "Lo siento, no puedo modificar mis instrucciones del sistema."
         if is_french:
@@ -110,16 +111,20 @@ def _mock_prompt_injection_check(last_msg: str, is_spanish: bool, is_french: boo
 def _mock_route_response(last_msg: str, is_spanish: bool, is_french: bool) -> str | None:
     """Generates route instructions for mock response."""
     words: List[str] = last_msg.replace(",", " ").replace(".", " ").split()
-    if "to" in words or "a" in words or "vers" in words or "route" in words or "como ir" in last_msg or "comment aller" in last_msg:
+    route_keywords = {"to", "a", "vers", "route"}
+    has_keyword = any(w in words for w in route_keywords)
+    has_phrase = "como ir" in last_msg or "comment aller" in last_msg
+    if has_keyword or has_phrase:
         target_gate: str = "Gate C" if "c" in last_msg else "Gate A"
         start_gate: str = "Gate A" if "a" in last_msg else "Gate C"
         route_res: Dict[str, Any] = get_route(start_gate, target_gate)
-        
-        is_wheelchair: bool = any(w in last_msg for w in ["wheelchair", "silla", "fauteuil", "accessibility", "step-free", "sin escalones"])
-        
+
+        wheelchair_keywords = ["wheelchair", "silla", "fauteuil", "accessibility", "step-free", "sin escalones"]
+        is_wheelchair: bool = any(w in last_msg for w in wheelchair_keywords)
+
         route_text: str = route_res.get("step_free_route" if is_wheelchair else "standard_route", "")
         dist: int = route_res.get("distance_meters", 0)
-        
+
         if is_spanish:
             return f"Ruta de {start_gate} a {target_gate} ({dist}m):\n{route_text}"
         if is_french:
@@ -130,14 +135,15 @@ def _mock_route_response(last_msg: str, is_spanish: bool, is_french: bool) -> st
 
 def _mock_gate_response(last_msg: str, is_spanish: bool, is_french: bool) -> str | None:
     """Generates gate status for mock response."""
-    for g in ["gate a", "gate b", "gate c", "gate d", "puerta a", "puerta b", "puerta c", "porte a", "porte c"]:
+    gates_list = ["gate a", "gate b", "gate c", "gate d", "puerta a", "puerta b", "puerta c", "porte a", "porte c"]
+    for g in gates_list:
         if g in last_msg:
             gate_letter: str = g.split()[-1].upper()
             gate_res: Dict[str, Any] = get_gate_status(f"Gate {gate_letter}")
-            
+
             if "error" in gate_res:
                 return str(gate_res["error"])
-            
+
             status_trans: str = "Open"
             if gate_res.get("status") == "Closed":
                 status_trans = "Cerrado" if is_spanish else ("Fermé" if is_french else "Closed")
@@ -158,7 +164,8 @@ def _mock_gate_response(last_msg: str, is_spanish: bool, is_french: bool) -> str
 
 def _mock_facility_response(last_msg: str, is_spanish: bool, is_french: bool) -> str | None:
     """Generates nearest toilet facility lookup mock response."""
-    if any(w in last_msg for w in ["bathroom", "toilet", "baño", "sanitario", "toilette", "wc"]):
+    toilet_words = ["bathroom", "toilet", "baño", "sanitario", "toilette", "wc"]
+    if any(w in last_msg for w in toilet_words):
         sec: int = 101
         for word in last_msg.split():
             if word.isdigit():
@@ -169,7 +176,7 @@ def _mock_facility_response(last_msg: str, is_spanish: bool, is_french: bool) ->
         if not results:
             return "No toilet facilities found."
         nearest: Dict[str, Any] = results[0]
-        
+
         acc_text: str = "Accessible" if nearest.get("is_accessible") else "Standard"
         level: str = nearest.get("level", "")
         section: int = nearest.get("section", 0)
@@ -186,6 +193,7 @@ def _mock_facility_response(last_msg: str, is_spanish: bool, is_french: bool) ->
     return None
 
 
+# pylint: disable=too-many-return-statements
 def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
     """Deterministic mock response engine used when GROQ_API_KEY is not set.
 
@@ -199,11 +207,13 @@ def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
         The generated mock reply string.
     """
     last_msg: str = messages[-1]["content"].lower()
-    
+
     # Language detection
-    is_spanish: bool = any(w in last_msg for w in ["como", "cómo", "baño", "puerta", "camino", "ruedas", "silla"])
-    is_french: bool = any(w in last_msg for w in ["comment", "porte", "toilette", "chemin", "fauteuil"])
-    
+    spanish_words = ["como", "cómo", "baño", "puerta", "camino", "ruedas", "silla"]
+    is_spanish: bool = any(w in last_msg for w in spanish_words)
+    french_words = ["comment", "porte", "toilette", "chemin", "fauteuil"]
+    is_french: bool = any(w in last_msg for w in french_words)
+
     # 1. Prompt injection check
     refusal: str | None = _mock_prompt_injection_check(last_msg, is_spanish, is_french)
     if refusal is not None:
@@ -230,14 +240,23 @@ def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
         return faq_res.get("content", "See general guidelines.")
 
     if is_spanish:
-        return "Hola, soy tu asistente de navegación. ¿En qué puedo ayudarte? Puedes preguntar por rutas accesibles, baños cercanos o el estado de las puertas."
+        return (
+            "Hola, soy tu asistente de navegación. ¿En qué puedo ayudarte? "
+            "Puedes preguntar por rutas accesibles, baños cercanos o el estado de las puertas."
+        )
     if is_french:
-        return "Bonjour, je suis votre assistant de navigation. Comment puis-je vous aider? Vous pouvez demander des itinéraires, des toilettes ou l'état des portes."
-    
-    return "Hello! I am your navigation assistant. I can help you find step-free routes, gates, nearest facilities, or answer stadium policy questions."
+        return (
+            "Bonjour, je suis votre assistant de navigation. Comment puis-je vous aider? "
+            "Vous pouvez demander des itinéraires, des toilettes ou l'état des portes."
+        )
+
+    return (
+        "Hello! I am your navigation assistant. I can help you find step-free routes, "
+        "gates, nearest facilities, or answer stadium policy questions."
+    )
 
 
-def run_chat_turn(session_id: str, user_message: str, history: List[Dict[str, Any]]) -> str:
+def run_chat_turn(_session_id: str, user_message: str, history: List[Dict[str, Any]]) -> str:
     """Executes a single chat turn against the appropriate engine.
 
     Checks emergency safety intercepts, trims history to context boundaries,
@@ -245,7 +264,8 @@ def run_chat_turn(session_id: str, user_message: str, history: List[Dict[str, An
     if keys are missing or offline.
 
     Args:
-        session_id: Unique identifier for the conversation session.
+        _session_id: Unique identifier for the conversation session (prefixed with
+            underscore to indicate unused).
         user_message: Sanitized user input string.
         history: Running list of conversation messages.
 
@@ -271,7 +291,7 @@ def run_chat_turn(session_id: str, user_message: str, history: List[Dict[str, An
                 system_prompt=SYSTEM_PROMPT,
                 tool_executor=execute_tool,
             )
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.warning(
                 "Groq turn failed (%s) — falling back to mock engine.",
                 type(exc).__name__,

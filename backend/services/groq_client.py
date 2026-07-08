@@ -24,7 +24,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import openai
 from openai import APIStatusError, APITimeoutError
@@ -224,7 +224,7 @@ def _log_quota_headers(response: Any) -> None:
             "remaining tokens: %s (resets %s)",
             remaining_req, reset_req, remaining_tok, reset_tok,
         )
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass  # Never crash on telemetry
 
 
@@ -325,12 +325,10 @@ _client: Optional[openai.OpenAI] = _build_client()
 
 class GroqRateLimitError(RuntimeError):
     """Raised when all retries are exhausted on a 429."""
-    pass
 
 
 class GroqUnavailableError(RuntimeError):
     """Raised when the API is unreachable or timed out."""
-    pass
 
 
 def groq_chat_completion(
@@ -353,7 +351,7 @@ def groq_chat_completion(
         GroqRateLimitError: If rate limit retries are exhausted.
         GroqUnavailableError: If the API is offline or returns other errors.
     """
-    global _client
+    global _client  # pylint: disable=global-statement
     if _client is None:
         _client = _build_client()
     if _client is None:
@@ -393,16 +391,16 @@ def groq_chat_completion(
                 )
                 time.sleep(delay)
                 continue
-            else:
-                # 4xx/5xx that isn't a rate limit — log sanitised message only
-                logger.error(
-                    "Groq API error status=%d type=%s",
-                    exc.status_code,
-                    type(exc).__name__,
-                )
-                raise GroqUnavailableError(
-                    f"Groq API returned an error (status {exc.status_code})."
-                ) from exc
+
+            # 4xx/5xx that isn't a rate limit — log sanitised message only
+            logger.error(
+                "Groq API error status=%d type=%s",
+                exc.status_code,
+                type(exc).__name__,
+            )
+            raise GroqUnavailableError(
+                f"Groq API returned an error (status {exc.status_code})."
+            ) from exc
 
         except APITimeoutError as exc:
             logger.error("Groq request timed out after %.1fs.", GROQ_TIMEOUT_SECONDS)
@@ -534,7 +532,7 @@ def run_groq_turn(
         logger.error("Groq unavailable: %s", type(exc).__name__)
         reply = str(exc)
 
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.error("Unexpected error in run_groq_turn: %s", type(exc).__name__)
         reply = (
             "Something went wrong while processing your request. "
