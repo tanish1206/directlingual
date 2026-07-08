@@ -10,6 +10,10 @@ from backend.tools.gate_status import get_gate_status
 from backend.tools.facilities import get_facility
 from backend.tools.faq import faq_lookup
 
+# Groq client — single module for all LLM calls
+from backend.services.groq_client import run_groq_turn
+from backend.config import MAX_HISTORY_TURNS
+
 load_dotenv()
 
 # Setup logger
@@ -209,86 +213,42 @@ def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
 
 def run_chat_turn(session_id: str, user_message: str, history: List[Dict[str, Any]]) -> str:
     """
-    Executes a single chat turn: check safety, validate input, call Claude or fallback to Mock, 
-    and manage history summarizing.
+    Executes a single chat turn:
+      1. Emergency keyword intercept (pre-LLM, no API tokens consumed)
+      2. History window trim
+      3. Route through Groq client (with tool calling + exponential back-off)
+      4. Graceful fallback to the deterministic mock engine if Groq is
+         unavailable (no GROQ_API_KEY, rate-limit exhausted, or timeout)
     """
-    # 1. Safety escalation check
+    # 1. Safety escalation — intercept before spending any API tokens
     if check_emergency(user_message):
         return STATIC_EMERGENCY_RESPONSE
 
-    # 2. Add user message to history
-    history.append({"role": "user", "content": user_message})
-    
-    # Context window cleanup: cap history length (keep last 8 turns)
-    if len(history) > 8:
-        history = history[-8:]
+    # 2. Trim history to prevent context bloat eating into TPM budget
+    #    Slice BEFORE appending the new message so we keep exactly MAX_HISTORY_TURNS.
+    if len(history) >= MAX_HISTORY_TURNS * 2:
+        history[:] = history[-(MAX_HISTORY_TURNS * 2):]
 
-    # 3. Call model (Anthropic or fallback)
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        logger.info("ANTHROPIC_API_KEY not found. Using local deterministic mock engine.")
-        response = mock_llm_response(history)
-        history.append({"role": "assistant", "content": response})
-        return response
-
-    try:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
-        
-        # Format messages for Claude
-        claude_messages = []
-        for msg in history:
-            claude_messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
-            
-        # Call Anthropic API
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
-            system=SYSTEM_PROMPT,
-            messages=claude_messages,
-            tools=CLAUDE_TOOLS
-        )
-        
-        # If Claude chooses to call a tool
-        if response.stop_reason == "tool_use":
-            tool_calls = [c for c in response.content if c.type == "tool_use"]
-            # Prepare next turn messages
-            # Claude requires both the original assistant response with tool_use and the tool results block
-            tool_results_content = []
-            for tool_call in tool_calls:
-                tool_result = execute_tool(tool_call.name, tool_call.input)
-                tool_results_content.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_call.id,
-                    "content": json.dumps(tool_result)
-                })
-            
-            # Append Claude's partial message and tool response back to the conversation
-            claude_messages.append({"role": "assistant", "content": response.content})
-            claude_messages.append({"role": "user", "content": tool_results_content})
-            
-            # Call Claude again with the tool results
-            final_response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1000,
-                system=SYSTEM_PROMPT,
-                messages=claude_messages
+    # 3. Try Groq (primary LLM)
+    groq_api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if groq_api_key:
+        try:
+            return run_groq_turn(
+                user_message=user_message,
+                history=history,
+                system_prompt=SYSTEM_PROMPT,
+                tool_executor=execute_tool,
             )
-            assistant_reply = "".join([c.text for c in final_response.content if c.type == "text"])
-            history.append({"role": "assistant", "content": assistant_reply})
-            return assistant_reply
-            
-        else:
-            assistant_reply = "".join([c.text for c in response.content if c.type == "text"])
-            history.append({"role": "assistant", "content": assistant_reply})
-            return assistant_reply
-            
-    except Exception as e:
-        logger.error(f"Error calling Claude: {str(e)}")
-        # Graceful fallback to Mock response rather than crashing the app
-        fallback = mock_llm_response(history)
-        history.append({"role": "assistant", "content": fallback})
-        return fallback
+        except Exception as exc:
+            # run_groq_turn already logged the sanitised error; we fall through
+            logger.warning(
+                "Groq turn failed (%s) — falling back to mock engine.",
+                type(exc).__name__,
+            )
+
+    # 4. Fallback: deterministic mock engine (no external calls)
+    logger.info("Using deterministic mock engine (no GROQ_API_KEY or Groq unavailable).")
+    history.append({"role": "user", "content": user_message})
+    response = mock_llm_response(history)
+    history.append({"role": "assistant", "content": response})
+    return response
