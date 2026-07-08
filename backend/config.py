@@ -49,6 +49,13 @@ MAX_HISTORY_TURNS: int = 8            # Keep last N user+assistant message pairs
 # ── Input validation ─────────────────────────────────────────────────────────
 MAX_USER_INPUT_LENGTH: int = 400      # Characters — matches input_validation.py
 
+# ── API Rate Limiting ─────────────────────────────────────────────────────────
+API_RATE_LIMIT_REQUESTS: int = 15     # Max requests allowed per client IP within the window
+API_RATE_LIMIT_WINDOW: int = 60       # Window size in seconds
+
+# ── Gate Status Caching ───────────────────────────────────────────────────────
+GATE_STATUS_CACHE_TTL: int = 30       # Time-to-live in seconds for gate status cache queries
+
 # ── Demo / fallback mode ──────────────────────────────────────────────────────
 # When DEMO_MODE=true (env) the Groq API is bypassed entirely — safe for
 # presentations where free-tier quota may be exhausted.

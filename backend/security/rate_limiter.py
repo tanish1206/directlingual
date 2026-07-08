@@ -1,20 +1,35 @@
 import time
 from collections import defaultdict
 import threading
+from typing import Dict, List
+from backend.config import API_RATE_LIMIT_REQUESTS, API_RATE_LIMIT_WINDOW
+
 
 class RateLimiter:
-    def __init__(self, requests_limit: int = 20, window_seconds: int = 60):
-        self.requests_limit = requests_limit
-        self.window_seconds = window_seconds
-        self.requests = defaultdict(list)
-        self.lock = threading.Lock()
+    """Thread-safe sliding window rate limiter to prevent API abuse."""
+
+    def __init__(self, requests_limit: int = API_RATE_LIMIT_REQUESTS, window_seconds: int = API_RATE_LIMIT_WINDOW) -> None:
+        """Initializes the RateLimiter.
+
+        Args:
+            requests_limit: Maximum requests allowed in the time window.
+            window_seconds: Time window duration in seconds.
+        """
+        self.requests_limit: int = requests_limit
+        self.window_seconds: int = window_seconds
+        self.requests: Dict[str, List[float]] = defaultdict(list)
+        self.lock: threading.Lock = threading.Lock()
 
     def is_allowed(self, client_id: str) -> bool:
+        """Checks if a request from the given client is allowed.
+
+        Args:
+            client_id: Unique identifier for the client (typically IP address).
+
+        Returns:
+            True if the request is within limits and allowed, False otherwise.
         """
-        Thread-safe sliding window rate limiting check.
-        Returns True if request is allowed, False otherwise.
-        """
-        now = time.time()
+        now: float = time.time()
         with self.lock:
             history = self.requests[client_id]
             # Keep only requests within the active window
@@ -27,5 +42,9 @@ class RateLimiter:
             self.requests[client_id].append(now)
             return True
 
+
 # Global rate limiter instance for API use
-global_rate_limiter = RateLimiter(requests_limit=15, window_seconds=60)
+global_rate_limiter: RateLimiter = RateLimiter(
+    requests_limit=API_RATE_LIMIT_REQUESTS,
+    window_seconds=API_RATE_LIMIT_WINDOW
+)
