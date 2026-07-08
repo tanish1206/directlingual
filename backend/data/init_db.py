@@ -2,7 +2,12 @@ import os
 import sqlite3
 from backend.config import DB_DIR, DB_PATH
 
-def init_db():
+def init_db() -> None:
+    """Initializes the SQLite venue database and seeds it with default data.
+
+    Creates tables for gates, facilities, and routes, and inserts the initial
+    seed data (including bidirectional routes) to support queries.
+    """
     os.makedirs(DB_DIR, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
