@@ -43,57 +43,19 @@ SYSTEM_PROMPT = (
     "5. Safety Boundary: For any emergency (injuries, active threats), direct the user to physical stewards or emergency services immediately."
 )
 
-CLAUDE_TOOLS = [
-    {
-        "name": "get_route",
-        "description": "Get routing instructions between a starting point and destination in the stadium, including step-free pathways.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "start": {"type": "string", "description": "The starting point, e.g., 'Gate A', 'Section 112'."},
-                "end": {"type": "string", "description": "The destination point, e.g., 'Gate C', 'Section 215'."}
-            },
-            "required": ["start", "end"]
-        }
-    },
-    {
-        "name": "get_gate_status",
-        "description": "Retrieve current wait times and open/closed status for a specific gate.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "gate_name": {"type": "string", "description": "The gate name, e.g., 'Gate A', 'Gate C'."}
-            },
-            "required": ["gate_name"]
-        }
-    },
-    {
-        "name": "get_facility",
-        "description": "Find the closest stadium facilities (toilet, concession, elevator, medical, prayer) nearest to a section.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "facility_type": {"type": "string", "description": "Type of facility: toilet, concession, elevator, medical, prayer."},
-                "near_section": {"type": "integer", "description": "The section number the user is currently at."}
-            },
-            "required": ["facility_type"]
-        }
-    },
-    {
-        "name": "faq_lookup",
-        "description": "Query the general FAQs for bag policies, ticketing rules, prohibited items, and general rules.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "The search term or query relating to policies or rules."}
-            },
-            "required": ["query"]
-        }
-    }
-]
 
 def check_emergency(user_message: str) -> bool:
-    """Check if the user is typing an emergency query."""
+    """
+    Check if the user message appears to describe an emergency.
+
+    NOTE: This is a best-effort keyword-matching safety layer with known
+    limitations. It may produce false positives (e.g. "fire sale", "die-hard
+    fan") and false negatives for phrasing not in SAFETY_KEYWORDS. It is NOT
+    a comprehensive safety system — its sole purpose is to short-circuit the
+    LLM and return a static emergency-contact response instantly, without
+    consuming API tokens. Physical stadium stewards remain the authoritative
+    safety resource.
+    """
     msg = user_message.lower()
     return any(kw in msg for kw in SAFETY_KEYWORDS)
 
@@ -116,8 +78,10 @@ def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
 def mock_llm_response(messages: List[Dict[str, Any]]) -> str:
     """
-    Fallback deterministic mock response system when ANTHROPIC_API_KEY is not set.
-    Directly extracts intention and runs local tools, matching language.
+    Deterministic mock response engine used when GROQ_API_KEY is not set or
+    when the Groq API is unavailable (rate-limit exhausted, timeout, etc.).
+    Directly extracts intent from the last message and calls local tools,
+    with basic language mirroring for English, Spanish, and French.
     """
     last_msg = messages[-1]["content"].lower()
     

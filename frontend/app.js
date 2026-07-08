@@ -285,7 +285,11 @@ function MessageBubble({ role, content, meta, onRouteMe }) {
     }
 
     return (
-        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} my-2.5`}>
+        <div
+            className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} my-2.5`}
+            role="article"
+            aria-label={`${isUser ? 'You' : 'Assistant'}: ${(content || '').slice(0, 80)}${(content || '').length > 80 ? '…' : ''}`}
+        >
             <span className="text-[10px] text-gray-500 uppercase tracking-widest font-extrabold mb-1 px-1">
                 {isUser ? 'You' : 'FIFA Event Tech'}
             </span>
@@ -696,8 +700,8 @@ function App() {
                 {messages.map((msg, index) => (
                     <MessageBubble 
                         key={index} 
-                        role={msg.role} 
-                        content={msg.content} 
+                        role={msg.role}
+                        content={msg.content}
                         meta={msg.meta}
                         onRouteMe={(facilityName) => {
                             const routeQuery = `Can I get directions from my location to ${facilityName}?`;
@@ -729,24 +733,28 @@ function App() {
                 <div className="flex gap-2 overflow-x-auto pb-1 scroll-bar-none">
                     <button 
                         onClick={() => handleQuickAction('route')}
+                        aria-label="Get accessible step-free route directions"
                         className="bg-fifaGreen-950 hover:bg-fifaGreen-900 border border-fifaGreen-800/80 text-fifaGreen-200 text-xs px-3.5 py-2.5 rounded-full font-bold whitespace-nowrap min-h-[44px] flex items-center gap-1.5 focus:ring-2 focus:ring-fifaGold-400 focus:outline-none"
                     >
                         ♿ Accessible Route
                     </button>
                     <button 
                         onClick={() => handleQuickAction('toilet')}
+                        aria-label="Find nearest accessible restroom"
                         className="bg-stadiumDark-850 hover:bg-stadiumDark-800 border border-gray-800 text-gray-300 text-xs px-3.5 py-2.5 rounded-full font-bold whitespace-nowrap min-h-[44px] flex items-center gap-1.5 focus:ring-2 focus:ring-fifaGold-400 focus:outline-none"
                     >
                         🚽 Restrooms
                     </button>
                     <button 
                         onClick={() => handleQuickAction('gate')}
+                        aria-label="Check Gate B queue wait time"
                         className="bg-stadiumDark-850 hover:bg-stadiumDark-800 border border-gray-800 text-gray-300 text-xs px-3.5 py-2.5 rounded-full font-bold whitespace-nowrap min-h-[44px] flex items-center gap-1.5 focus:ring-2 focus:ring-fifaGold-400 focus:outline-none"
                     >
                         🚪 Gate B Queue
                     </button>
                     <button 
                         onClick={() => handleQuickAction('bag')}
+                        aria-label="Check stadium bag size and policy rules"
                         className="bg-stadiumDark-850 hover:bg-stadiumDark-800 border border-gray-800 text-gray-300 text-xs px-3.5 py-2.5 rounded-full font-bold whitespace-nowrap min-h-[44px] flex items-center gap-1.5 focus:ring-2 focus:ring-fifaGold-400 focus:outline-none"
                     >
                         🎒 Bag Policy
