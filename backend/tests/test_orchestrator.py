@@ -1,4 +1,6 @@
 import pytest
+import os
+from unittest.mock import patch
 from backend.orchestrator import check_emergency, run_chat_turn, STATIC_EMERGENCY_RESPONSE
 
 def test_emergency_escalation_detection():
@@ -15,8 +17,13 @@ def test_run_chat_turn_emergency():
     assert len(history) == 0
 
 def test_run_chat_turn_normal_mock():
-    # Since key is not present in tests, this will run through the mock provider
-    history = []
-    reply = run_chat_turn("test_session", "How do I get to Gate C?", history)
-    assert "Gate C" in reply
-    assert len(history) == 2  # user + assistant
+    """
+    With no GROQ_API_KEY the orchestrator must fall back to the deterministic
+    mock engine and return a recognisable response — no real API call is made.
+    """
+    # Ensure the mock path is taken by removing any key set by other test modules
+    with patch.dict(os.environ, {"GROQ_API_KEY": ""}, clear=False):
+        history = []
+        reply = run_chat_turn("test_session", "How do I get to Gate C?", history)
+        assert "Gate C" in reply
+        assert len(history) == 2  # user + assistant
