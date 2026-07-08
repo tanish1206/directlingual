@@ -1,8 +1,6 @@
 import os
 import sqlite3
-
-DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, "venue.db")
+from backend.config import DB_DIR, DB_PATH
 
 def init_db():
     os.makedirs(DB_DIR, exist_ok=True)

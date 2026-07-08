@@ -1,9 +1,7 @@
 import sqlite3
 import os
 import time
-
-DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-DB_PATH = os.path.join(DB_DIR, "venue.db")
+from backend.config import DB_PATH
 
 # Cache format: { gate_name: (expiry_timestamp, result_dict) }
 _gate_cache = {}
