@@ -1,25 +1,33 @@
 import sqlite3
-import os
 import time
-from backend.config import DB_PATH
+from typing import Dict, Tuple, Any
+from backend.config import DB_PATH, GATE_STATUS_CACHE_TTL
 
 # Cache format: { gate_name: (expiry_timestamp, result_dict) }
-_gate_cache = {}
-CACHE_TTL_SECONDS = 30
+_gate_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+CACHE_TTL_SECONDS: int = GATE_STATUS_CACHE_TTL
 
-def get_gate_status(gate_name: str) -> dict:
-    """
-    Fetches the status and current wait times for a specified gate.
-    Uses a local thread-safe/in-memory cache with 30s TTL.
+
+def get_gate_status(gate_name: str) -> Dict[str, Any]:
+    """Fetches the status and current wait times for a specified gate.
+
+    Uses a thread-safe local in-memory cache to prevent redundant DB hits.
+
+    Args:
+        gate_name: Name of the gate to lookup (e.g., 'Gate A').
+
+    Returns:
+        A dictionary containing the gate's status, wait time, location details,
+        and whether the result was retrieved from cache.
     """
     if not gate_name:
         return {"error": "Gate name must be specified."}
 
-    gate_name_clean = gate_name.strip()
-    now = time.time()
+    gate_name_clean: str = gate_name.strip()
+    now: float = time.time()
     
     # Check cache
-    cache_key = gate_name_clean.lower()
+    cache_key: str = gate_name_clean.lower()
     if cache_key in _gate_cache:
         expiry, cached_res = _gate_cache[cache_key]
         if now < expiry:
@@ -37,12 +45,12 @@ def get_gate_status(gate_name: str) -> dict:
     conn.close()
     
     if row:
-        res = {
+        res: Dict[str, Any] = {
             "name": row[0],
             "status": row[1],
             "wait_time_minutes": row[2],
             "location_description": row[3],
-            "cached": False
+            "cached": False,
         }
         # Update cache
         _gate_cache[cache_key] = (now + CACHE_TTL_SECONDS, res)
@@ -62,7 +70,7 @@ def get_gate_status(gate_name: str) -> dict:
                 "status": status,
                 "wait_time_minutes": wait,
                 "location_description": desc,
-                "cached": False
+                "cached": False,
             }
             _gate_cache[name.lower()] = (now + CACHE_TTL_SECONDS, res)
             return res

@@ -217,47 +217,71 @@ def _log_quota_headers(response: Any) -> None:
 
 # ── Tool-call argument validation ─────────────────────────────────────────────
 
+def _validate_route_args(args: dict) -> tuple[bool, str]:
+    """Validates routing arguments."""
+    start = args.get("start", "")
+    end = args.get("end", "")
+    if not isinstance(start, str) or not start.strip():
+        return False, "get_route: 'start' must be a non-empty string"
+    if not isinstance(end, str) or not end.strip():
+        return False, "get_route: 'end' must be a non-empty string"
+    if len(start) > _MAX_ROUTE_NODE_LENGTH or len(end) > _MAX_ROUTE_NODE_LENGTH:
+        return False, "get_route: node name exceeds maximum allowed length"
+    return True, ""
+
+
+def _validate_gate_args(args: dict) -> tuple[bool, str]:
+    """Validates gate status lookup arguments."""
+    gate = args.get("gate_name", "")
+    if not isinstance(gate, str) or not gate.strip():
+        return False, "get_gate_status: 'gate_name' must be a non-empty string"
+    if len(gate) > _MAX_GATE_NAME_LENGTH:
+        return False, "get_gate_status: gate name too long"
+    if not gate.strip().lower().startswith(_VALID_GATE_PREFIX):
+        return False, f"get_gate_status: gate name must start with '{_VALID_GATE_PREFIX}'"
+    return True, ""
+
+
+def _validate_facility_args(args: dict) -> tuple[bool, str]:
+    """Validates nearest facility lookup arguments."""
+    ftype = args.get("facility_type", "")
+    if ftype not in _VALID_FACILITY_TYPES:
+        return False, f"get_facility: unknown facility_type '{ftype}'"
+    near_section = args.get("near_section")
+    if near_section is not None:
+        if not isinstance(near_section, int) or not (100 <= near_section <= 999):
+            return False, "get_facility: near_section must be an integer 100–999"
+    return True, ""
+
+
+def _validate_faq_args(args: dict) -> tuple[bool, str]:
+    """Validates FAQ lookup arguments."""
+    query = args.get("query", "")
+    if not isinstance(query, str) or not query.strip():
+        return False, "faq_lookup: 'query' must be a non-empty string"
+    if len(query) > _MAX_FAQ_QUERY_LENGTH:
+        return False, "faq_lookup: query exceeds maximum allowed length"
+    return True, ""
+
+
 def _validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
-    """
-    Validate model-returned tool arguments against known-safe schemas.
-    Returns (is_valid, error_reason).
-    Never trust LLM output blindly before executing local DB queries.
+    """Validate model-returned tool arguments against known-safe schemas.
+
+    Args:
+        tool_name: The name of the tool being called.
+        args: Dictionary of arguments supplied to the tool.
+
+    Returns:
+        A tuple (is_valid, error_reason) indicating validation success/failure.
     """
     if tool_name == "get_route":
-        start = args.get("start", "")
-        end = args.get("end", "")
-        if not isinstance(start, str) or not start.strip():
-            return False, "get_route: 'start' must be a non-empty string"
-        if not isinstance(end, str) or not end.strip():
-            return False, "get_route: 'end' must be a non-empty string"
-        if len(start) > _MAX_ROUTE_NODE_LENGTH or len(end) > _MAX_ROUTE_NODE_LENGTH:
-            return False, "get_route: node name exceeds maximum allowed length"
-
-    elif tool_name == "get_gate_status":
-        gate = args.get("gate_name", "")
-        if not isinstance(gate, str) or not gate.strip():
-            return False, "get_gate_status: 'gate_name' must be a non-empty string"
-        if len(gate) > _MAX_GATE_NAME_LENGTH:
-            return False, "get_gate_status: gate name too long"
-        if not gate.strip().lower().startswith(_VALID_GATE_PREFIX):
-            return False, f"get_gate_status: gate name must start with '{_VALID_GATE_PREFIX}'"
-
-    elif tool_name == "get_facility":
-        ftype = args.get("facility_type", "")
-        if ftype not in _VALID_FACILITY_TYPES:
-            return False, f"get_facility: unknown facility_type '{ftype}'"
-        near_section = args.get("near_section")
-        if near_section is not None:
-            if not isinstance(near_section, int) or not (100 <= near_section <= 999):
-                return False, "get_facility: near_section must be an integer 100–999"
-
-    elif tool_name == "faq_lookup":
-        query = args.get("query", "")
-        if not isinstance(query, str) or not query.strip():
-            return False, "faq_lookup: 'query' must be a non-empty string"
-        if len(query) > _MAX_FAQ_QUERY_LENGTH:
-            return False, "faq_lookup: query exceeds maximum allowed length"
-
+        return _validate_route_args(args)
+    if tool_name == "get_gate_status":
+        return _validate_gate_args(args)
+    if tool_name == "get_facility":
+        return _validate_facility_args(args)
+    if tool_name == "faq_lookup":
+        return _validate_faq_args(args)
     return True, ""
 
 

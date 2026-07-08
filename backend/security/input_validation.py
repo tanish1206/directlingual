@@ -12,35 +12,36 @@ Unicode obfuscation that regex-based stripping cannot reliably catch.
 
 import html
 import bleach
+from backend.config import MAX_USER_INPUT_LENGTH
 
-MAX_INPUT_LENGTH = 400
+MAX_INPUT_LENGTH: int = MAX_USER_INPUT_LENGTH
 
 
 class ValidationError(ValueError):
+    """Raised when user input validation fails."""
     pass
 
 
 def sanitize_and_validate_input(text: str) -> str:
-    """
-    Sanitize user input and enforce length limits.
+    """Sanitizes user input and enforces length limits.
 
-    Steps:
-      1. Reject empty input.
-      2. Strip leading/trailing whitespace.
-      3. Enforce MAX_INPUT_LENGTH character cap.
-      4. Strip ALL HTML tags using bleach (allowlist = empty → no tags permitted).
-         bleach with strip=True removes tags; remaining text is HTML-entity-encoded.
-      5. Unescape HTML entities (e.g. &amp;lt; → <) then run bleach a second time
-         to catch any tags that were hidden behind entity encoding.
-      6. Reject input that is blank after stripping.
+    Removes all HTML tags, whitespace, and validates the length limits. Defeats
+    double-encoding bypasses (e.g., <<script>script>) by using a two-pass
+    unescape and clean filter via bleach.
 
-    Returns the sanitized string, or raises ValidationError.
+    Args:
+        text: Raw untrusted user input string.
+
+    Returns:
+        The sanitized string.
+
+    Raises:
+        ValidationError: If input is empty, too long, or contains only blank tags.
     """
     if not text:
         raise ValidationError("Input content cannot be empty.")
 
-    # Strip whitespace
-    sanitized = text.strip()
+    sanitized: str = text.strip()
 
     # Enforce length cap BEFORE stripping so an attacker cannot pad with tags
     # to sneak past the limit after stripping removes them.

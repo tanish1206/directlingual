@@ -1,17 +1,26 @@
 import sqlite3
-import os
+from typing import Dict, Any
 from backend.config import DB_PATH
 
-def get_route(start: str, end: str) -> dict:
-    """
-    Retrieves route directions between two nodes in the venue.
+
+def get_route(start: str, end: str) -> Dict[str, Any]:
+    """Retrieves route directions between two nodes in the venue.
+
     Supports standard path instructions and step-free/wheelchair-accessible paths.
+
+    Args:
+        start: Name of the starting location (e.g., 'Gate A').
+        end: Name of the destination location (e.g., 'Section 215').
+
+    Returns:
+        A dictionary containing the start node, end node, standard route,
+        step-free route, and distance in meters, or an error message.
     """
     if not start or not end:
         return {"error": "Both start and end points must be specified."}
         
-    start_clean = start.strip()
-    end_clean = end.strip()
+    start_clean: str = start.strip()
+    end_clean: str = end.strip()
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -32,7 +41,7 @@ def get_route(start: str, end: str) -> dict:
             "end": row[1],
             "standard_route": row[2],
             "step_free_route": row[3],
-            "distance_meters": row[4]
+            "distance_meters": row[4],
         }
     
     # Fallback to fuzzy starts/ends (e.g. "Gate A" instead of "gate a")
@@ -46,14 +55,15 @@ def get_route(start: str, end: str) -> dict:
     conn.close()
     
     for r_start, r_end, path, step_free, dist in all_routes:
-        if (start_clean.lower() in r_start.lower() or r_start.lower() in start_clean.lower()) and \
-           (end_clean.lower() in r_end.lower() or r_end.lower() in end_clean.lower()):
+        start_match: bool = (start_clean.lower() in r_start.lower() or r_start.lower() in start_clean.lower())
+        end_match: bool = (end_clean.lower() in r_end.lower() or r_end.lower() in end_clean.lower())
+        if start_match and end_match:
             return {
                 "start": r_start,
                 "end": r_end,
                 "standard_route": path,
                 "step_free_route": step_free,
-                "distance_meters": dist
+                "distance_meters": dist,
             }
             
     return {
