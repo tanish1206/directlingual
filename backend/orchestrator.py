@@ -119,10 +119,13 @@ def _mock_route_response(last_msg: str, is_spanish: bool, is_french: bool) -> st
         start_gate: str = "Gate A" if "a" in last_msg else "Gate C"
         route_res: Dict[str, Any] = get_route(start_gate, target_gate)
 
-        wheelchair_keywords = ["wheelchair", "silla", "fauteuil", "accessibility", "step-free", "sin escalones"]
+        wheelchair_keywords = [
+            "wheelchair", "silla", "fauteuil", "accessibility", "step-free", "sin escalones"
+        ]
         is_wheelchair: bool = any(w in last_msg for w in wheelchair_keywords)
 
-        route_text: str = route_res.get("step_free_route" if is_wheelchair else "standard_route", "")
+        route_key = "step_free_route" if is_wheelchair else "standard_route"
+        route_text: str = route_res.get(route_key, "")
         dist: int = route_res.get("distance_meters", 0)
 
         if is_spanish:
@@ -135,7 +138,10 @@ def _mock_route_response(last_msg: str, is_spanish: bool, is_french: bool) -> st
 
 def _mock_gate_response(last_msg: str, is_spanish: bool, is_french: bool) -> str | None:
     """Generates gate status for mock response."""
-    gates_list = ["gate a", "gate b", "gate c", "gate d", "puerta a", "puerta b", "puerta c", "porte a", "porte c"]
+    gates_list = [
+        "gate a", "gate b", "gate c", "gate d",
+        "puerta a", "puerta b", "puerta c", "porte a", "porte c"
+    ]
     for g in gates_list:
         if g in last_msg:
             gate_letter: str = g.split()[-1].upper()
@@ -184,12 +190,24 @@ def _mock_facility_response(last_msg: str, is_spanish: bool, is_french: bool) ->
         status: str = nearest.get("status", "")
 
         if is_spanish:
-            acc_trans: str = "Accesible para silla de ruedas" if nearest.get("is_accessible") else "Estándar"
-            return f"El baño más cercano está en {level}, Sección {section} ({name}, {acc_trans}). Estado: {status}."
+            acc_trans: str = (
+                "Accesible para silla de ruedas"
+                if nearest.get("is_accessible") else "Estándar"
+            )
+            return (
+                f"El baño más cercano está en {level}, Sección {section} "
+                f"({name}, {acc_trans}). Estado: {status}."
+            )
         if is_french:
             acc_trans = "Accessible" if nearest.get("is_accessible") else "Standard"
-            return f"La toilette la plus proche est au {level}, Section {section} ({name}, {acc_trans}). Statut: {status}."
-        return f"Nearest toilet is at {level}, Section {section} ({name}, {acc_text}). Status: {status}."
+            return (
+                f"La toilette la plus proche est au {level}, Section {section} "
+                f"({name}, {acc_trans}). Statut: {status}."
+            )
+        return (
+            f"Nearest toilet is at {level}, Section {section} "
+            f"({name}, {acc_text}). Status: {status}."
+        )
     return None
 
 

@@ -1,11 +1,8 @@
-import pytest
-import os
-import sqlite3
-
 from backend.tools.routing import get_route
 from backend.tools.gate_status import get_gate_status
 from backend.tools.facilities import get_facility
 from backend.tools.faq import faq_lookup
+
 
 def test_routing_success():
     # Test standard & step-free routing from seeded DB
@@ -17,10 +14,12 @@ def test_routing_success():
     assert "step-free" in res["step_free_route"]
     assert res["distance_meters"] == 400
 
+
 def test_routing_failure():
     res = get_route("Gate X", "Gate Z")
     assert "error" in res
     assert "No route found" in res["error"]
+
 
 def test_gate_status_and_caching():
     # Test first fetch
@@ -29,7 +28,7 @@ def test_gate_status_and_caching():
     assert res1["name"] == "Gate A"
     assert res1["status"] == "Open"
     assert res1["cached"] is False
-    
+
     # Test cached fetch (should hit within 30s)
     res2 = get_gate_status("Gate A")
     assert res2["cached"] is True

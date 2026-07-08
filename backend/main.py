@@ -63,7 +63,7 @@ def check_rate_limit(request: Request) -> None:
 @app.post("/api/chat")
 async def chat_endpoint(
     chat_req: ChatRequest,
-    request: Request,
+    _request: Request,
     _: None = Depends(check_rate_limit)
 ) -> Any:
     """Handles fan chat queries.
@@ -73,31 +73,26 @@ async def chat_endpoint(
 
     Args:
         chat_req: The validated ChatRequest body containing message and session ID.
-        request: The FastAPI request object.
-        _: Rate limit dependency.
-
-    Returns:
-        A JSON response containing the assistant reply and the session ID.
+        _request: The raw FastAPI Request object.
     """
     try:
-        # Sanitize and validate input text
         sanitized_msg: str = sanitize_and_validate_input(chat_req.message)
     except ValidationError as ve:
         return JSONResponse(
             status_code=400,
             content={"error": str(ve)}
         )
-    
+
     # Initialize history if session is new
     session_id: str = chat_req.session_id
     if session_id not in session_histories:
         session_histories[session_id] = []
-        
+
     history: List[Dict[str, Any]] = session_histories[session_id]
-    
+
     # Run orchestrator turn
     reply: str = run_chat_turn(session_id, sanitized_msg, history)
-    
+
     return {
         "reply": reply,
         "session_id": session_id

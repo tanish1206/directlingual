@@ -14,10 +14,8 @@ Design principles
 
 import json
 import os
-import time
-import types
 import unittest
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 import importlib
 
 # ── Make sure GROQ_API_KEY is present for tests that exercise the client path
