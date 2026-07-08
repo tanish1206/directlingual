@@ -5,10 +5,15 @@ from typing import Dict, List
 from backend.config import API_RATE_LIMIT_REQUESTS, API_RATE_LIMIT_WINDOW
 
 
+# pylint: disable=too-few-public-methods
 class RateLimiter:
     """Thread-safe sliding window rate limiter to prevent API abuse."""
 
-    def __init__(self, requests_limit: int = API_RATE_LIMIT_REQUESTS, window_seconds: int = API_RATE_LIMIT_WINDOW) -> None:
+    def __init__(
+        self,
+        requests_limit: int = API_RATE_LIMIT_REQUESTS,
+        window_seconds: int = API_RATE_LIMIT_WINDOW
+    ) -> None:
         """Initializes the RateLimiter.
 
         Args:
@@ -35,10 +40,10 @@ class RateLimiter:
             # Keep only requests within the active window
             history = [t for t in history if now - t < self.window_seconds]
             self.requests[client_id] = history
-            
+
             if len(history) >= self.requests_limit:
                 return False
-            
+
             self.requests[client_id].append(now)
             return True
 

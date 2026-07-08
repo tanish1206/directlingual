@@ -19,7 +19,6 @@ MAX_INPUT_LENGTH: int = MAX_USER_INPUT_LENGTH
 
 class ValidationError(ValueError):
     """Raised when user input validation fails."""
-    pass
 
 
 def sanitize_and_validate_input(text: str) -> str:

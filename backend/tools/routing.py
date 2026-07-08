@@ -18,23 +18,23 @@ def get_route(start: str, end: str) -> Dict[str, Any]:
     """
     if not start or not end:
         return {"error": "Both start and end points must be specified."}
-        
+
     start_clean: str = start.strip()
     end_clean: str = end.strip()
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
+
     # Try exact match first
     cursor.execute("""
         SELECT start_node, end_node, path_instructions, step_free_instructions, distance_meters 
         FROM routes 
         WHERE LOWER(start_node) = LOWER(?) AND LOWER(end_node) = LOWER(?)
     """, (start_clean, end_clean))
-    
+
     row = cursor.fetchone()
     conn.close()
-    
+
     if row:
         return {
             "start": row[0],
@@ -43,7 +43,7 @@ def get_route(start: str, end: str) -> Dict[str, Any]:
             "step_free_route": row[3],
             "distance_meters": row[4],
         }
-    
+
     # Fallback to fuzzy starts/ends (e.g. "Gate A" instead of "gate a")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -53,10 +53,16 @@ def get_route(start: str, end: str) -> Dict[str, Any]:
     """)
     all_routes = cursor.fetchall()
     conn.close()
-    
+
     for r_start, r_end, path, step_free, dist in all_routes:
-        start_match: bool = (start_clean.lower() in r_start.lower() or r_start.lower() in start_clean.lower())
-        end_match: bool = (end_clean.lower() in r_end.lower() or r_end.lower() in end_clean.lower())
+        start_match: bool = (
+            start_clean.lower() in r_start.lower() or
+            r_start.lower() in start_clean.lower()
+        )
+        end_match: bool = (
+            end_clean.lower() in r_end.lower() or
+            r_end.lower() in end_clean.lower()
+        )
         if start_match and end_match:
             return {
                 "start": r_start,
@@ -65,7 +71,10 @@ def get_route(start: str, end: str) -> Dict[str, Any]:
                 "step_free_route": step_free,
                 "distance_meters": dist,
             }
-            
+
     return {
-        "error": f"No route found between '{start}' and '{end}'. Please ask staff or check the physical maps."
+        "error": (
+            f"No route found between '{start}' and '{end}'. "
+            "Please ask staff or check the physical maps."
+        )
     }

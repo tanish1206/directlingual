@@ -20,9 +20,9 @@ def get_facility(facility_type: str, near_section: Optional[int] = None) -> Dict
     """
     if not facility_type:
         return {"error": "Facility type must be specified."}
-        
+
     facility_type_clean: str = facility_type.strip().lower()
-    
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -30,13 +30,13 @@ def get_facility(facility_type: str, near_section: Optional[int] = None) -> Dict
         FROM facilities 
         WHERE LOWER(type) = LOWER(?)
     """, (facility_type_clean,))
-    
+
     rows = cursor.fetchall()
     conn.close()
-    
+
     if not rows:
         return {"error": f"No facilities found of type '{facility_type}'."}
-        
+
     facilities_list: List[Dict[str, Any]] = []
     for name, f_type, level, section, is_accessible, status in rows:
         facilities_list.append({
@@ -47,7 +47,7 @@ def get_facility(facility_type: str, near_section: Optional[int] = None) -> Dict
             "is_accessible": bool(is_accessible),
             "status": status,
         })
-        
+
     if near_section is not None:
         try:
             target_sec: int = int(near_section)

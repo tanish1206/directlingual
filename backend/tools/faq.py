@@ -2,7 +2,8 @@ import os
 import re
 from typing import Dict, Any, Set, Optional
 
-KB_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "faq_kb")
+_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+KB_DIR: str = os.path.join(_DIR, "data", "faq_kb")
 
 
 def faq_lookup(query: str) -> Dict[str, Any]:
@@ -20,7 +21,7 @@ def faq_lookup(query: str) -> Dict[str, Any]:
     """
     if not query:
         return {"error": "Query cannot be empty."}
-        
+
     query_words: Set[str] = set(re.findall(r'\w+', query.lower()))
     if not query_words:
         return {"error": "No searchable keywords found in query."}
@@ -37,11 +38,11 @@ def faq_lookup(query: str) -> Dict[str, Any]:
             filepath: str = os.path.join(KB_DIR, filename)
             with open(filepath, "r", encoding="utf-8") as f:
                 content: str = f.read()
-                
+
             # Score based on how many query words are found in the content
             content_lower: str = content.lower()
             score: int = sum(1 for word in query_words if word in content_lower)
-            
+
             if score > best_score:
                 best_score = score
                 best_match_file = filename
@@ -54,7 +55,7 @@ def faq_lookup(query: str) -> Dict[str, Any]:
             "content": best_match_content,
             "relevance_score": best_score,
         }
-        
+
     return {
         "error": (
             "No matching FAQ found. For ticketing or special issues, please "

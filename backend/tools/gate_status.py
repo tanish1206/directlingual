@@ -25,7 +25,7 @@ def get_gate_status(gate_name: str) -> Dict[str, Any]:
 
     gate_name_clean: str = gate_name.strip()
     now: float = time.time()
-    
+
     # Check cache
     cache_key: str = gate_name_clean.lower()
     if cache_key in _gate_cache:
@@ -40,10 +40,10 @@ def get_gate_status(gate_name: str) -> Dict[str, Any]:
         FROM gates 
         WHERE LOWER(name) = LOWER(?)
     """, (gate_name_clean,))
-    
+
     row = cursor.fetchone()
     conn.close()
-    
+
     if row:
         res: Dict[str, Any] = {
             "name": row[0],
@@ -55,14 +55,14 @@ def get_gate_status(gate_name: str) -> Dict[str, Any]:
         # Update cache
         _gate_cache[cache_key] = (now + CACHE_TTL_SECONDS, res)
         return res
-        
+
     # Check with prefix/fuzzy match
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT name, status, wait_time_minutes, location_description FROM gates")
     all_gates = cursor.fetchall()
     conn.close()
-    
+
     for name, status, wait, desc in all_gates:
         if gate_name_clean.lower() in name.lower() or name.lower() in gate_name_clean.lower():
             res = {
@@ -74,5 +74,5 @@ def get_gate_status(gate_name: str) -> Dict[str, Any]:
             }
             _gate_cache[name.lower()] = (now + CACHE_TTL_SECONDS, res)
             return res
-            
+
     return {"error": f"Gate '{gate_name}' not found."}

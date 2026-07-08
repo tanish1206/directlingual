@@ -262,7 +262,7 @@ def _validate_facility_args(args: dict) -> tuple[bool, str]:
         return False, f"get_facility: unknown facility_type '{ftype}'"
     near_section = args.get("near_section")
     if near_section is not None:
-        if not isinstance(near_section, int) or not (100 <= near_section <= 999):
+        if not isinstance(near_section, int) or not 100 <= near_section <= 999:
             return False, "get_facility: near_section must be an integer 100–999"
     return True, ""
 

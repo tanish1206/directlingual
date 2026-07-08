@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 import os
 import sqlite3
 from backend.config import DB_DIR, DB_PATH
@@ -89,7 +90,7 @@ def init_db() -> None:
     # Routes
     # We define routes between gates and main sections/facilities
     routes_data = [
-        ("Gate A", "Gate C", 
+        ("Gate A", "Gate C",
          "Walk straight past Section 101, follow the main concourse path clockwise past Section 110, take a slight right bend at Section 115 to arrive at South Concourse and Gate C.",
          "Walk straight past Section 101, follow the step-free main concourse path clockwise past Section 110 (all level ground), continue past Section 115 to Gate C.",
          400),
@@ -125,7 +126,7 @@ def init_db() -> None:
             VALUES (?, ?, ?, ?, ?)
             """, (end, start, f"Reverse path: {path}", f"Reverse step-free path: {step_free}", dist))
         except sqlite3.IntegrityError:
-            pass # Already exists
+            pass  # Already exists
 
     conn.commit()
     conn.close()
