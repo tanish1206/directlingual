@@ -8,12 +8,24 @@ from pydantic import BaseModel, Field
 from backend.security.input_validation import sanitize_and_validate_input, ValidationError
 from backend.security.rate_limiter import global_rate_limiter
 from backend.orchestrator import run_chat_turn
+from backend.config import DB_PATH
+from backend.data.init_db import init_db
 
 app = FastAPI(
     title="FIFA 2026 Stadium Navigation & Info Assistant",
     description="Accessible, multilingual chat & voice assistant for stadium navigation.",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup_event():
+    # Automatically initialize and seed the database if it doesn't exist.
+    # This is critical on Vercel where the DB is seeded into /tmp/venue.db at runtime.
+    if not os.path.exists(DB_PATH):
+        print(f"Database not found at {DB_PATH}. Initializing and seeding...")
+        init_db()
+    else:
+        print(f"Database already exists at {DB_PATH}.")
 
 # In-memory session history store: { session_id: list of messages }
 session_histories: Dict[str, List[Dict[str, Any]]] = {}
