@@ -24,7 +24,7 @@ import json
 import logging
 import os
 import time
-from typing import Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import openai
 from openai import APIStatusError, APITimeoutError
@@ -179,8 +179,15 @@ _DEMO_RESPONSES: dict[str, str] = {
 
 
 def _get_demo_response(user_message: str) -> str:
-    """Return a canned response keyed by keyword presence."""
-    msg = user_message.lower()
+    """Returns a canned response keyed by keyword presence.
+
+    Args:
+        user_message: The raw user message.
+
+    Returns:
+        A mock canned response string.
+    """
+    msg: str = user_message.lower()
     if any(w in msg for w in ("route", "direction", "how do i get", "navigate")):
         return _DEMO_RESPONSES["route"]
     if any(w in msg for w in ("gate", "puerta", "porte", "queue", "wait")):
@@ -195,17 +202,23 @@ def _get_demo_response(user_message: str) -> str:
 # ── Quota header parsing ──────────────────────────────────────────────────────
 
 def _log_quota_headers(response: Any) -> None:
-    """
-    Extract and log Groq rate-limit headers from the raw HTTP response.
-    Headers present: x-ratelimit-remaining-requests, x-ratelimit-remaining-tokens,
-                     x-ratelimit-reset-requests, x-ratelimit-reset-tokens.
+    """Extracts and logs Groq rate-limit headers from the raw HTTP response.
+
+    Extracts:
+        x-ratelimit-remaining-requests
+        x-ratelimit-remaining-tokens
+        x-ratelimit-reset-requests
+        x-ratelimit-reset-tokens
+
+    Args:
+        response: Raw ChatCompletion response object.
     """
     try:
-        headers = getattr(response, "headers", None) or {}
-        remaining_req = headers.get("x-ratelimit-remaining-requests", "?")
-        remaining_tok = headers.get("x-ratelimit-remaining-tokens", "?")
-        reset_req = headers.get("x-ratelimit-reset-requests", "?")
-        reset_tok = headers.get("x-ratelimit-reset-tokens", "?")
+        headers: Dict[str, Any] = getattr(response, "headers", None) or {}
+        remaining_req: str = headers.get("x-ratelimit-remaining-requests", "?")
+        remaining_tok: str = headers.get("x-ratelimit-remaining-tokens", "?")
+        reset_req: str = headers.get("x-ratelimit-reset-requests", "?")
+        reset_tok: str = headers.get("x-ratelimit-reset-tokens", "?")
         logger.info(
             "Groq quota — remaining requests: %s (resets %s) | "
             "remaining tokens: %s (resets %s)",
@@ -287,9 +300,13 @@ def _validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:
 
 # ── Groq client singleton ─────────────────────────────────────────────────────
 
-def _build_client() -> openai.OpenAI | None:
-    """Construct the openai SDK client pointed at Groq's base URL."""
-    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+def _build_client() -> Optional[openai.OpenAI]:
+    """Constructs the openai SDK client pointed at Groq's base URL.
+
+    Returns:
+        An instance of openai.OpenAI client, or None if the API key is not set.
+    """
+    api_key: str = os.environ.get("GROQ_API_KEY", "").strip()
     if not api_key:
         logger.warning("GROQ_API_KEY not set — Groq client unavailable.")
         return None
@@ -301,38 +318,40 @@ def _build_client() -> openai.OpenAI | None:
     )
 
 
-_client: openai.OpenAI | None = _build_client()
+_client: Optional[openai.OpenAI] = _build_client()
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
 class GroqRateLimitError(RuntimeError):
     """Raised when all retries are exhausted on a 429."""
+    pass
 
 
 class GroqUnavailableError(RuntimeError):
     """Raised when the API is unreachable or timed out."""
+    pass
 
 
 def groq_chat_completion(
-    messages: list[dict],
+    messages: List[Dict[str, Any]],
     use_tools: bool = True,
 ) -> openai.types.chat.ChatCompletion:
-    """
-    Send a chat completion request to Groq with optional tool-calling.
+    """Sends a chat completion request to Groq with optional tool-calling.
 
-    Retry policy
-    ─────────────
-    On HTTP 429 the function reads the Retry-After header (or falls back to
-    exponential back-off capped at GROQ_BACKOFF_MAX seconds) and retries up
-    to GROQ_MAX_RETRIES times. RPM, TPM, and RPD 429s are all handled
-    identically — the client cannot distinguish which limit was hit from the
-    status code alone, so the same back-off strategy protects all three.
+    Implements automatic exponential back-off and retry when hitting HTTP 429
+    (rate limits for RPM, TPM, or RPD).
 
-    Raises
-    ──────
-    GroqRateLimitError   – all retries exhausted
-    GroqUnavailableError – timeout or non-429 API error
+    Args:
+        messages: List of chat message dictionaries to send.
+        use_tools: Whether to include tool schemas in the request.
+
+    Returns:
+        The chat completion response object from the API.
+
+    Raises:
+        GroqRateLimitError: If rate limit retries are exhausted.
+        GroqUnavailableError: If the API is offline or returns other errors.
     """
     global _client
     if _client is None:
@@ -399,29 +418,27 @@ def groq_chat_completion(
 
 def parse_tool_calls(
     response: openai.types.chat.ChatCompletion,
-) -> list[dict] | None:
-    """
-    Extract and validate tool calls from a Groq completion response.
+) -> Optional[List[Dict[str, Any]]]:
+    """Extracts and validates tool calls from a Groq completion response.
 
-    Returns a list of validated dicts:
-        [{"name": str, "id": str, "args": dict}, ...]
+    Args:
+        response: The completion response object containing choices.
 
-    Returns None if the model chose not to call any tools.
-
-    Malformed tool-call payloads are logged and skipped rather than crashing
-    the request — the orchestrator can decide how to handle partial results.
+    Returns:
+        A list of validated tool calls containing 'name', 'id', and 'args',
+        or None if no tools were called.
     """
     choice = response.choices[0]
     if choice.finish_reason != "tool_calls":
         return None
 
     tool_calls = getattr(choice.message, "tool_calls", None) or []
-    validated: list[dict] = []
+    validated: List[Dict[str, Any]] = []
 
     for tc in tool_calls:
-        name = getattr(tc.function, "name", None)
-        raw_args = getattr(tc.function, "arguments", "{}")
-        call_id = getattr(tc, "id", "")
+        name: str = getattr(tc.function, "name", "")
+        raw_args: str = getattr(tc.function, "arguments", "{}")
+        call_id: str = getattr(tc, "id", "")
 
         # Parse JSON arguments
         try:
@@ -441,7 +458,7 @@ def parse_tool_calls(
             continue
 
         # Validate arguments against expected schema
-        is_valid, reason = _validate_tool_args(name or "", args)
+        is_valid, reason = _validate_tool_args(name, args)
         if not is_valid:
             logger.warning(
                 "Tool argument validation failed for '%s': %s (call_id=%s)",
@@ -456,28 +473,24 @@ def parse_tool_calls(
 
 def run_groq_turn(
     user_message: str,
-    history: list[dict],
+    history: List[Dict[str, Any]],
     system_prompt: str,
-    tool_executor,  # Callable[[str, dict], dict]
+    tool_executor: Callable[[str, Dict[str, Any]], Dict[str, Any]],
 ) -> str:
-    """
-    Execute one full chat turn against Groq, including a tool-calling round-trip.
+    """Executes one full chat turn against Groq, including tool-calling if needed.
 
-    Parameters
-    ──────────
-    user_message  : Already-sanitised user text (≤ MAX_USER_INPUT_LENGTH chars).
-    history       : Running conversation history (mutated in-place).
-    system_prompt : The trusted system prompt string.
-    tool_executor : Callable(name, args) → dict — executes a named local tool.
+    Args:
+        user_message: Sanitized user input string (enforced length limit).
+        history: Running conversation history (mutated in-place).
+        system_prompt: The trusted system prompt instructions.
+        tool_executor: A callable executing a local tool function by name.
 
-    Returns
-    ───────
-    The assistant's final reply as a string, or a user-facing error message.
-    Logs are emitted at WARNING/ERROR level; user text is never logged verbatim.
+    Returns:
+        The final assistant response string.
     """
     # ── Demo mode fast-path ───────────────────────────────────────────────────
     if DEMO_MODE:
-        reply = _get_demo_response(user_message)
+        reply: str = _get_demo_response(user_message)
         history.append({"role": "user", "content": user_message})
         history.append({"role": "assistant", "content": reply})
         logger.info("DEMO_MODE active — returning canned response.")
@@ -485,7 +498,7 @@ def run_groq_turn(
 
     # ── Build message list ────────────────────────────────────────────────────
     history.append({"role": "user", "content": user_message})
-    messages: list[dict] = [{"role": "system", "content": system_prompt}] + history
+    messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}] + history
 
     try:
         # ── First call — may trigger tool use ─────────────────────────────────
@@ -497,7 +510,7 @@ def run_groq_turn(
             messages.append(response.choices[0].message)
 
             # Execute each validated tool and append results
-            tool_results: list[dict] = []
+            tool_results: List[Dict[str, Any]] = []
             for tc in tool_calls:
                 result = tool_executor(tc["name"], tc["args"])
                 tool_results.append({
@@ -522,7 +535,6 @@ def run_groq_turn(
         reply = str(exc)
 
     except Exception as exc:
-        # Catch-all: log type only — do NOT include user content
         logger.error("Unexpected error in run_groq_turn: %s", type(exc).__name__)
         reply = (
             "Something went wrong while processing your request. "

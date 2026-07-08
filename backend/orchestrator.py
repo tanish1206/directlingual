@@ -40,7 +40,11 @@ SYSTEM_PROMPT = (
     "2. Grounding Rule: Only state gate statuses, wait times, or routes if you have called the relevant tool in this turn. Never estimate, guess, or make up live data. If a tool returns an error or no data, honestly state that.\n"
     "3. Language Mirroring: You must respond in the same language the user writes in. If the language is unsupported, say so honestly in that language.\n"
     "4. Accessibility Tone: Use short, plain sentences. If requested, simplify your language further. When describing routes, mention step-free access clearly for accessibility users.\n"
-    "5. Safety Boundary: For any emergency (injuries, active threats), direct the user to physical stewards or emergency services immediateldef check_emergency(user_message: str) -> bool:
+    "5. Safety Boundary: For any emergency (injuries, active threats), direct the user to physical stewards or emergency services immediately."
+)
+
+
+def check_emergency(user_message: str) -> bool:
     """Checks if the user message appears to describe an emergency.
 
     NOTE: This is a best-effort keyword-matching safety layer with known

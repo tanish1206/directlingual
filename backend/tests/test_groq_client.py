@@ -18,10 +18,17 @@ import time
 import types
 import unittest
 from unittest.mock import MagicMock, patch, call
+import importlib
 
 # ── Make sure GROQ_API_KEY is present for tests that exercise the client path
 os.environ.setdefault("GROQ_API_KEY", "gsk_test_key_for_unit_tests_only")
 os.environ["DEMO_MODE"] = "false"  # Ensure demo-mode is off unless explicitly set
+
+# Reload config and groq_client to ensure environment changes are picked up regardless of import order
+import backend.config
+import backend.services.groq_client
+importlib.reload(backend.config)
+importlib.reload(backend.services.groq_client)
 
 from backend.services.groq_client import (
     GroqRateLimitError,
