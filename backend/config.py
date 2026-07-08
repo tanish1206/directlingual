@@ -53,3 +53,15 @@ MAX_USER_INPUT_LENGTH: int = 400      # Characters — matches input_validation.
 # When DEMO_MODE=true (env) the Groq API is bypassed entirely — safe for
 # presentations where free-tier quota may be exhausted.
 DEMO_MODE: bool = os.environ.get("DEMO_MODE", "false").strip().lower() == "true"
+
+# ── Database ──────────────────────────────────────────────────────────────────
+# On Vercel, the filesystem is read-only, except for /tmp.
+# If we detect the VERCEL environment variable, or if we cannot write to the
+# default local data directory, we place the SQLite database in /tmp.
+_default_db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+if os.environ.get("VERCEL") or not os.access(_default_db_dir, os.W_OK):
+    DB_DIR = "/tmp"
+else:
+    DB_DIR = _default_db_dir
+
+DB_PATH = os.path.join(DB_DIR, "venue.db")
